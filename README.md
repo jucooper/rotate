@@ -1,4 +1,4 @@
-# My WOD
+# Rotate
 A ruby app that 'rotates' my Rocket League clips to my gfycat profile.
 
 ## Usage
