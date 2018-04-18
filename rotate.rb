@@ -22,11 +22,6 @@ class Rotate < Sinatra::Base
     super
   end
 
-
-  get '/' do
-    get_xbox_clips
-  end
-
   get '/scrape' do
     scrape_xbox_dvr_clips
   end
@@ -35,37 +30,36 @@ class Rotate < Sinatra::Base
     get_gfycat_access_token
   end
 
-  get '/auth-xbox' do
-    get_xbox_access_token
-  end
-
   helpers do
-
-    def get_xbox_clips
-      # TODO Fetch xbox clips from api
-    end
     
     def scrape_xbox_dvr_clips
-      doc = Nokogiri::HTML(HTTParty.get("#{XBOX_DVR_BASE_URL}/gamer/#{XBOX_GAMERTAG}/videos/#{XBOX_ROCKETLEAGUE_TITLE_ID}"))
+      doc = Nokogiri::HTML(HTTParty.get(
+        "#{XBOX_DVR_BASE_URL}/gamer/#{XBOX_GAMERTAG}/videos/#{XBOX_ROCKETLEAGUE_TITLE_ID}"
+      ))
+
+      date_format = "%m/%d/%Y"
+      days_ago    = params[:days_ago].empty? ? 10 : params[:days_ago].to_i
+      
       doc.css('.vid-card').each do |card|
-        if within_date params[:days_ago], card.css('.extra-row').css('time').text, "%m/%d/%Y"
-          card.css('.content-row').each do |clip|
-            clip.css('a').each do |link|
-              post_gif "#{XBOX_DVR_BASE_URL}#{link['href']}"
-            end
+        string_date = card.css('.extra-row').css('time').text
+
+        if within_date days_ago, string_date, date_format
+          card.css('.content-row a').each do |link|
+            post_gif "#{XBOX_DVR_BASE_URL}#{link['href']}"
           end
         end
+
       end
     end
 
-    def post_gif source_url
+    def post_gif clip_url
       headers = {
         "Authorization" => "Bearer #{@tokens[:gfycat]}",
         "Content-Type"  => "application/json"
       }
       
       payload = {
-        fetchUrl: source_url,
+        fetchUrl: clip_url,
         tags: ["#{XBOX_GAMERTAG}", "RocketLeague"]
       }
 
@@ -97,8 +91,8 @@ class Rotate < Sinatra::Base
       end
     end
 
-    def within_date days_ago, date, format
-      Date.today - days_ago.to_i <= Date.strptime(date, "%m/%d/%Y")
+    def within_date days_ago, string_date, date_format
+      return Date.today - days_ago <= Date.strptime(string_date, date_format)
     end
 
   end
